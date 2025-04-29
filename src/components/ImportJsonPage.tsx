@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button, Modal, Tabs, message, Input, Upload, Card, Typography } from 'antd';
 import { useForm, Controller } from 'react-hook-form';
 import type { TabsProps } from 'antd';
-import { InboxOutlined } from '@ant-design/icons';
+import { InboxOutlined, CopyOutlined } from '@ant-design/icons';
 import DynamicForm from './DynamicForm';
 
 const { TextArea } = Input;
@@ -209,11 +209,93 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     );
   };
 
+  const generateTSXCode = (schema: FieldSchema[]) => {
+    const formFields = schema.map(field => {
+      let fieldCode = '';
+      switch (field.type) {
+        case 'string':
+          fieldCode = `<Form.Item
+  label="${field.label}"
+  name="${field.name}"
+  rules={[{ required: ${field.required}, message: 'กรุณากรอก${field.label}' }]}
+>
+  <Input placeholder="กรุณากรอก${field.label}" />
+</Form.Item>`;
+          break;
+        case 'number':
+          fieldCode = `<Form.Item
+  label="${field.label}"
+  name="${field.name}"
+  rules={[{ required: ${field.required}, message: 'กรุณากรอก${field.label}' }]}
+>
+  <InputNumber style={{ width: '100%' }} placeholder="กรุณากรอก${field.label}" />
+</Form.Item>`;
+          break;
+        case 'select':
+          const options = field.options?.map(opt => 
+            `    <Select.Option key="${opt.value}" value="${opt.value}">${opt.label}</Select.Option>`
+          ).join('\n') || '';
+          fieldCode = `<Form.Item
+  label="${field.label}"
+  name="${field.name}"
+  rules={[{ required: ${field.required}, message: 'กรุณาเลือก${field.label}' }]}
+>
+  <Select placeholder="กรุณาเลือก${field.label}">
+${options}
+  </Select>
+</Form.Item>`;
+          break;
+        case 'boolean':
+          fieldCode = `<Form.Item
+  label="${field.label}"
+  name="${field.name}"
+  valuePropName="checked"
+  rules={[{ required: ${field.required}, message: 'กรุณาเลือก${field.label}' }]}
+>
+  <Switch />
+</Form.Item>`;
+          break;
+      }
+      return fieldCode;
+    }).join('\n\n');
+
+    return `import { Form, Input, InputNumber, Select, Switch } from 'antd';
+
+const DynamicForm = () => {
+  return (
+    <Form layout="vertical">
+${formFields}
+    </Form>
+  );
+};
+
+export default DynamicForm;`;
+  };
+
+  const handleCopyTSX = () => {
+    if (formSchema.length === 0) {
+      message.warning('กรุณานำเข้า JSON Schema ก่อน');
+      return;
+    }
+    const tsxCode = generateTSXCode(formSchema);
+    navigator.clipboard.writeText(tsxCode);
+    message.success('คัดลอกโค้ด TSX เรียบร้อยแล้ว');
+  };
+
   return (
     <div>
-      <Button type="primary" onClick={handleOpen}>
-        นำเข้า JSON Schema
-      </Button>
+      <div className="flex gap-2 mb-4">
+        <Button type="primary" onClick={handleOpen}>
+          นำเข้า JSON Schema
+        </Button>
+        <Button 
+          icon={<CopyOutlined />} 
+          onClick={handleCopyTSX}
+          disabled={formSchema.length === 0}
+        >
+          คัดลอกโค้ด TSX
+        </Button>
+      </div>
 
       <Modal
         title="นำเข้า JSON Schema"

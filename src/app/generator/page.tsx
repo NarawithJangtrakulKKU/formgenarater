@@ -1,7 +1,7 @@
 'use client';
 
 import ImportJsonPage from '@/components/ImportJsonPage';
-import { ConfigProvider, Typography, Button, Card, Tabs, message } from 'antd';
+import { ConfigProvider, Typography, Button, Card, message } from 'antd';
 import thTH from 'antd/locale/th_TH';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -20,13 +20,11 @@ interface FormField {
 export default function GeneratorPage() {
   const router = useRouter();
   const [generatedCode, setGeneratedCode] = useState<string>('');
-  const [activeTab, setActiveTab] = useState('1');
 
   const handleImport = (jsonData: Record<string, unknown>) => {
     console.log('Imported JSON:', jsonData);
     const code = generateFormCode(Array.isArray(jsonData) ? jsonData as FormField[] : []);
     setGeneratedCode(code);
-    setActiveTab('2'); // Switch to code preview tab
   };
 
   const generateFormCode = (fields: FormField[]) => {
@@ -97,34 +95,6 @@ export default DynamicForm;`;
     message.success('คัดลอกโค้ด TSX เรียบร้อยแล้ว');
   };
 
-  const items = [
-    {
-      key: '1',
-      label: 'สร้างแบบฟอร์ม',
-      children: <ImportJsonPage onImport={handleImport} />
-    },
-    {
-      key: '2',
-      label: 'โค้ด TSX',
-      children: (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button 
-              icon={<CopyOutlined />} 
-              onClick={handleCopyCode}
-              disabled={!generatedCode}
-            >
-              คัดลอกโค้ด
-            </Button>
-          </div>
-          <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto">
-            <code>{generatedCode || '// โค้ดจะแสดงที่นี่หลังจากสร้างแบบฟอร์ม'}</code>
-          </pre>
-        </div>
-      )
-    }
-  ];
-
   return (
     <ConfigProvider locale={thTH}>
       <main className="min-h-screen bg-gray-50">
@@ -143,11 +113,24 @@ export default DynamicForm;`;
           </div>
           
           <Card>
-            <Tabs 
-              activeKey={activeTab} 
-              onChange={setActiveTab}
-              items={items}
-            />
+            <div className="space-y-4">
+              <ImportJsonPage onImport={handleImport} />
+              {generatedCode && (
+                <>
+                  <div className="flex justify-end">
+                    <Button 
+                      icon={<CopyOutlined />} 
+                      onClick={handleCopyCode}
+                    >
+                      คัดลอกโค้ด
+                    </Button>
+                  </div>
+                  <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto">
+                    <code>{generatedCode}</code>
+                  </pre>
+                </>
+              )}
+            </div>
           </Card>
         </div>
       </main>
