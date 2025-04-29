@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { Button, Modal, Tabs, message, Input } from 'antd';
+import { Button, Modal, Tabs, message, Input, Upload, Card, Typography } from 'antd';
 import { useForm, Controller } from 'react-hook-form';
 import type { TabsProps } from 'antd';
+import { InboxOutlined } from '@ant-design/icons';
 import DynamicForm from './DynamicForm';
 
 const { TextArea } = Input;
+const { Title, Text, Paragraph } = Typography;
+const { Dragger } = Upload;
 
 interface FieldSchema {
   type: string;
@@ -82,16 +85,14 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     processJsonSchema(data.rawJson);
   });
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        processJsonSchema(content);
-      };
-      reader.readAsText(file);
-    }
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      processJsonSchema(content);
+    };
+    reader.readAsText(file);
+    return false; // Prevent default upload behavior
   };
 
   const handleFormSubmit = (values: Record<string, unknown>) => {
@@ -100,21 +101,7 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     onImport(values);
   };
 
-  const items: TabsProps['items'] = [
-    {
-      key: '1',
-      label: 'Raw JSON',
-      children: (
-        <form onSubmit={handleRawJsonSubmit}>
-          <Controller
-            name="rawJson"
-            control={control}
-            defaultValue=""
-            render={({ field }) => (
-              <TextArea
-                {...field}
-                placeholder={`ตัวอย่าง JSON Schema:
-[
+  const exampleJson = `[
   {
     "type": "string",
     "label": "ชื่อ",
@@ -130,49 +117,91 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
       { "label": "หญิง", "value": "female" }
     ]
   }
-]`}
-                rows={10}
-                style={{ marginBottom: '16px' }}
-              />
-            )}
-          />
-          <Button type="primary" htmlType="submit" block>
-            นำเข้า JSON Schema
-          </Button>
-        </form>
+]`;
+
+  const items: TabsProps['items'] = [
+    {
+      key: '1',
+      label: 'Raw JSON',
+      children: (
+        <div className="space-y-4">
+          <Card>
+            <Title level={5}>รูปแบบ JSON ที่รองรับ</Title>
+            <Paragraph>
+              <ul className="list-disc pl-4 space-y-2">
+                <li>ต้องเป็น Array ของ field objects</li>
+                <li>แต่ละ field ต้องมี properties: type, label, name</li>
+                <li>type ที่รองรับ: string, number, select, boolean</li>
+                <li>required เป็น optional boolean</li>
+                <li>options ใช้กับ type select เท่านั้น</li>
+              </ul>
+            </Paragraph>
+          </Card>
+          <form onSubmit={handleRawJsonSubmit}>
+            <Controller
+              name="rawJson"
+              control={control}
+              defaultValue=""
+              render={({ field }) => (
+                <TextArea
+                  {...field}
+                  placeholder={exampleJson}
+                  rows={10}
+                  style={{ marginBottom: '16px' }}
+                />
+              )}
+            />
+            <Button type="primary" htmlType="submit" block>
+              นำเข้า JSON Schema
+            </Button>
+          </form>
+        </div>
       ),
     },
     {
       key: '2',
       label: 'Import File',
       children: (
-        <input
-          type="file"
-          accept=".json"
-          onChange={handleFileUpload}
-          style={{
-            padding: '10px',
-            border: '1px solid #d9d9d9',
-            borderRadius: '4px',
-            width: '100%',
-          }}
-        />
+        <div className="space-y-4">
+          <Card>
+            <Title level={5}>อัพโหลดไฟล์ JSON</Title>
+            <Paragraph>
+              <ul className="list-disc pl-4 space-y-2">
+                <li>รองรับไฟล์ .json เท่านั้น</li>
+                <li>ไฟล์ต้องมีรูปแบบตามที่กำหนด</li>
+                <li>ขนาดไฟล์ไม่เกิน 1MB</li>
+              </ul>
+            </Paragraph>
+          </Card>
+          <Dragger
+            accept=".json"
+            beforeUpload={handleFileUpload}
+            showUploadList={false}
+          >
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined />
+            </p>
+            <p className="ant-upload-text">คลิกหรือลากไฟล์มาวางที่นี่</p>
+            <p className="ant-upload-hint">
+              รองรับไฟล์ .json เท่านั้น
+            </p>
+          </Dragger>
+        </div>
       ),
     },
   ];
 
-  // รายละเอียดฟิลด์จาก Schema สำหรับแสดงในหน้าต่างยืนยัน
   const renderSchemaFields = () => {
     if (!pendingSchema) return null;
     
     return (
       <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-        <h3>รายละเอียดฟิลด์</h3>
-        <ul style={{ paddingLeft: '20px' }}>
+        <Title level={5}>รายละเอียดฟิลด์</Title>
+        <ul className="list-disc pl-4 space-y-2">
           {pendingSchema.map((field, index) => (
             <li key={index}>
-              <strong>{field.label}</strong> ({field.name}): {field.type}
-              {field.required && <span style={{ color: 'red' }}> *</span>}
+              <Text strong>{field.label}</Text> ({field.name}): {field.type}
+              {field.required && <Text type="danger"> *</Text>}
             </li>
           ))}
         </ul>
@@ -186,18 +215,16 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
         นำเข้า JSON Schema
       </Button>
 
-      {/* Modal สำหรับนำเข้า JSON Schema */}
       <Modal
         title="นำเข้า JSON Schema"
         open={isOpen}
         onCancel={handleClose}
         footer={null}
-        width={600}
+        width={800}
       >
         <Tabs items={items} />
       </Modal>
 
-      {/* Modal สำหรับยืนยันการสร้างแบบฟอร์ม */}
       <Modal
         title="ยืนยันการสร้างแบบฟอร์ม"
         open={confirmModalVisible}
@@ -206,14 +233,16 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
         okText="ยืนยัน"
         cancelText="ยกเลิก"
       >
-        <p>คุณต้องการสร้างแบบฟอร์มจาก JSON Schema นี้ใช่หรือไม่?</p>
-        <p>จำนวนฟิลด์ทั้งหมด: {pendingSchema?.length || 0}</p>
-        {renderSchemaFields()}
+        <div className="space-y-4">
+          <Paragraph>คุณต้องการสร้างแบบฟอร์มจาก JSON Schema นี้ใช่หรือไม่?</Paragraph>
+          <Text>จำนวนฟิลด์ทั้งหมด: {pendingSchema?.length || 0}</Text>
+          {renderSchemaFields()}
+        </div>
       </Modal>
 
       {formSchema.length > 0 && (
-        <div style={{ marginTop: '24px' }}>
-          <h2 style={{ marginBottom: '16px' }}>แบบฟอร์มที่สร้างจาก JSON Schema</h2>
+        <div className="mt-6">
+          <Title level={4} className="mb-4">แบบฟอร์มที่สร้างจาก JSON Schema</Title>
           <DynamicForm schema={formSchema} onSubmit={handleFormSubmit} />
         </div>
       )}
