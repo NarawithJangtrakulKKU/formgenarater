@@ -22,6 +22,8 @@ interface ImportJsonPageProps {
 const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [formSchema, setFormSchema] = useState<FieldSchema[]>([]);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [pendingSchema, setPendingSchema] = useState<FieldSchema[] | null>(null);
   const { control, handleSubmit, reset } = useForm<{ rawJson: string }>();
 
   const handleOpen = () => setIsOpen(true);
@@ -41,6 +43,26 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     );
   };
 
+  const showConfirmModal = (schema: FieldSchema[]) => {
+    setPendingSchema(schema);
+    setConfirmModalVisible(true);
+  };
+
+  const handleConfirmOk = () => {
+    if (pendingSchema) {
+      setFormSchema(pendingSchema);
+      handleClose();
+      message.success('นำเข้า JSON Schema สำเร็จ');
+      setConfirmModalVisible(false);
+      setPendingSchema(null);
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    setConfirmModalVisible(false);
+    setPendingSchema(null);
+  };
+
   const processJsonSchema = (jsonData: unknown) => {
     try {
       const schema = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
@@ -50,9 +72,7 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
         return;
       }
 
-      setFormSchema(schema);
-      handleClose();
-      message.success('นำเข้า JSON Schema สำเร็จ');
+      showConfirmModal(schema);
     } catch {
       message.error('รูปแบบ JSON ไม่ถูกต้อง');
     }
@@ -141,12 +161,32 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     },
   ];
 
+  // รายละเอียดฟิลด์จาก Schema สำหรับแสดงในหน้าต่างยืนยัน
+  const renderSchemaFields = () => {
+    if (!pendingSchema) return null;
+    
+    return (
+      <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+        <h3>รายละเอียดฟิลด์</h3>
+        <ul style={{ paddingLeft: '20px' }}>
+          {pendingSchema.map((field, index) => (
+            <li key={index}>
+              <strong>{field.label}</strong> ({field.name}): {field.type}
+              {field.required && <span style={{ color: 'red' }}> *</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
   return (
     <div>
       <Button type="primary" onClick={handleOpen}>
         นำเข้า JSON Schema
       </Button>
 
+      {/* Modal สำหรับนำเข้า JSON Schema */}
       <Modal
         title="นำเข้า JSON Schema"
         open={isOpen}
@@ -155,6 +195,20 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
         width={600}
       >
         <Tabs items={items} />
+      </Modal>
+
+      {/* Modal สำหรับยืนยันการสร้างแบบฟอร์ม */}
+      <Modal
+        title="ยืนยันการสร้างแบบฟอร์ม"
+        open={confirmModalVisible}
+        onOk={handleConfirmOk}
+        onCancel={handleConfirmCancel}
+        okText="ยืนยัน"
+        cancelText="ยกเลิก"
+      >
+        <p>คุณต้องการสร้างแบบฟอร์มจาก JSON Schema นี้ใช่หรือไม่?</p>
+        <p>จำนวนฟิลด์ทั้งหมด: {pendingSchema?.length || 0}</p>
+        {renderSchemaFields()}
       </Modal>
 
       {formSchema.length > 0 && (
