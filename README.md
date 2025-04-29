@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📝 Form Generator (Next.js)
 
-## Getting Started
+โปรเจกต์นี้เป็น Form Generator ที่ใช้ [Next.js](https://nextjs.org/) และ [Ant Design](https://ant.design/) สำหรับสร้างแบบฟอร์มแบบไดนามิกจาก JSON Schema โดยมีฟีเจอร์ในการนำเข้า JSON Schema สร้างแบบฟอร์ม และคัดลอกโค้ด TSX
 
-First, run the development server:
+## 🚀 Features
+
+- นำเข้า JSON Schema ผ่านการพิมพ์หรืออัพโหลดไฟล์
+- สร้างแบบฟอร์มแบบไดนามิกจาก JSON Schema
+- รองรับฟิลด์หลากหลายประเภท (ข้อความ, ตัวเลข, ตัวเลือก, สวิตช์)
+- ตรวจสอบความถูกต้องของข้อมูลอัตโนมัติ
+- คัดลอกโค้ด TSX สำหรับใช้ในโปรเจกต์อื่น
+- ตัวอย่าง JSON Schema สำหรับการใช้งาน
+
+## 🛠️ Tech Stack
+
+- [Next.js 14](https://nextjs.org/)
+- [React](https://reactjs.org/)
+- [Ant Design](https://ant.design/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [React Hook Form](https://react-hook-form.com/)
+
+---
+
+## 📦 การติดตั้งและรันโปรเจกต์
+
+1. **Clone โปรเจกต์นี้ลงเครื่อง**
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/NarawithJangtrakulKKU/formgenerator.git
+cd formgenerator
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **ติดตั้ง dependencies**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install 
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. **run project** 
 
-## Learn More
+```bash
+npm run dev 
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. **เปิด Browser**
+```bash
+http://localhost:3000
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📋 ตัวอย่าง JSON Schema
 
-## Deploy on Vercel
+```json
+[
+  {
+    "type": "string",
+    "label": "ชื่อ",
+    "name": "firstName",
+    "required": true
+  },
+  {
+    "type": "select",
+    "label": "เพศ",
+    "name": "gender",
+    "options": [
+      { "label": "ชาย", "value": "male" },
+      { "label": "หญิง", "value": "female" }
+    ]
+  }
+]
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 👨‍💻 ผู้พัฒนา
+
+โปรเจ็คนี้พัฒนาโดย นราวิชญ์ จังตระกูล 
+
+หากมีข้อเสนอแนะ หรือต้องการพูดคุยเกี่ยวกับโปรเจกต์นี้ สามารถติดต่อมาได้เลยครับ 🙌
