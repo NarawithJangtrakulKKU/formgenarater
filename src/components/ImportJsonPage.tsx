@@ -55,8 +55,8 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
 
       if (typeof field.type !== 'string') {
         errors.push(`ฟิลด์ที่ ${index + 1}: ต้องมี property 'type' เป็น string`);
-      } else if (!['string', 'number', 'select', 'boolean'].includes(field.type)) {
-        errors.push(`ฟิลด์ที่ ${index + 1}: type '${field.type}' ไม่ถูกต้อง (ต้องเป็น string, number, select, หรือ boolean)`);
+      } else if (!['string', 'number', 'select', 'boolean', 'date'].includes(field.type)) {
+        errors.push(`ฟิลด์ที่ ${index + 1}: type '${field.type}' ไม่ถูกต้อง (ต้องเป็น string, number, select, boolean, หรือ date)`);
       }
 
       if (typeof field.label !== 'string') {

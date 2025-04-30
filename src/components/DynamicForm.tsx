@@ -1,5 +1,6 @@
 import React from 'react';
-import { Form, Input, Select, Switch, InputNumber, Button, Row, Col } from 'antd';
+import { Form, Input, Select, Switch, InputNumber, Button, Row, Col, DatePicker } from 'antd';
+import type { Dayjs } from 'dayjs';
 
 interface FieldSchema {
   type: string;
@@ -13,7 +14,7 @@ interface FieldSchema {
 
 interface DynamicFormProps {
   schema: FieldSchema[];
-  onSubmit: (values: Record<string, string | number | boolean>) => void;
+  onSubmit: (values: Record<string, string | number | boolean | Dayjs>) => void;
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
@@ -37,12 +38,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
             ))}
           </Select>
         );
+      case 'date':
+        return <DatePicker style={{ width: '100%' }} placeholder={field.placeholder || `กรุณาเลือก${field.label}`} />;
       default:
         return <Input placeholder={field.placeholder || `กรุณากรอก${field.label}`} />;
     }
   };
 
-  const handleSubmit = (values: Record<string, string | number | boolean>) => {
+  const handleSubmit = (values: Record<string, string | number | boolean | Dayjs>) => {
     onSubmit(values);
   };
 
