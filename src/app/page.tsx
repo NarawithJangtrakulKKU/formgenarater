@@ -107,7 +107,15 @@ export default function Home() {
     "type": "string",
     "label": "ชื่อ",
     "name": "firstName",
-    "required": true
+    "required": true,
+    "span": 12
+  },
+  {
+    "type": "string",
+    "label": "นามสกุล",
+    "name": "lastName",
+    "required": true,
+    "span": 12
   },
   {
     "type": "select",
@@ -116,7 +124,20 @@ export default function Home() {
     "options": [
       { "label": "ชาย", "value": "male" },
       { "label": "หญิง", "value": "female" }
-    ]
+    ],
+    "span": 12
+  },
+  {
+    "type": "number",
+    "label": "อายุ",
+    "name": "age",
+    "span": 12
+  },
+  {
+    "type": "string",
+    "label": "ที่อยู่",
+    "name": "address",
+    "span": 24
   }
 ]`}
               </pre>

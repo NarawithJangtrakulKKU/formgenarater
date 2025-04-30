@@ -1,5 +1,5 @@
 import React from 'react';
-import { Form, Input, Select, Switch, InputNumber, Button } from 'antd';
+import { Form, Input, Select, Switch, InputNumber, Button, Row, Col } from 'antd';
 
 interface FieldSchema {
   type: string;
@@ -8,6 +8,7 @@ interface FieldSchema {
   required?: boolean;
   options?: { label: string; value: string | number | boolean }[];
   placeholder?: string;
+  span?: number;
 }
 
 interface DynamicFormProps {
@@ -29,8 +30,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
       case 'select':
         return (
           <Select placeholder={field.placeholder || `กรุณาเลือก${field.label}`}>
-            {field.options?.map((option) => (
-              <Select.Option key={String(option.value)} value={option.value}>
+            {field.options?.map((option, index) => (
+              <Select.Option key={`${option.value}-${index}`} value={option.value}>
                 {option.label}
               </Select.Option>
             ))}
@@ -45,27 +46,59 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
     onSubmit(values);
   };
 
+  const groupFieldsIntoRows = (fields: FieldSchema[]) => {
+    const rows: FieldSchema[][] = [];
+    let currentRow: FieldSchema[] = [];
+    let currentRowSpan = 0;
+
+    fields.forEach((field) => {
+      const span = field.span || 24;
+      
+      if (currentRowSpan + span > 24) {
+        rows.push(currentRow);
+        currentRow = [field];
+        currentRowSpan = span;
+      } else {
+        currentRow.push(field);
+        currentRowSpan += span;
+      }
+    });
+
+    if (currentRow.length > 0) {
+      rows.push(currentRow);
+    }
+
+    return rows;
+  };
+
+  const fieldRows = groupFieldsIntoRows(schema);
+
   return (
     <Form
       form={form}
       layout="vertical"
       onFinish={handleSubmit}
-      style={{ maxWidth: 600, margin: '0 auto' }}
+      style={{ maxWidth: 800, margin: '0 auto' }}
     >
-      {schema.map((field) => (
-        <Form.Item
-          key={field.name}
-          label={field.label}
-          name={field.name}
-          rules={[
-            {
-              required: field.required,
-              message: `กรุณากรอก${field.label}`,
-            },
-          ]}
-        >
-          {renderField(field)}
-        </Form.Item>
+      {fieldRows.map((row, rowIndex) => (
+        <Row key={rowIndex} gutter={16}>
+          {row.map((field) => (
+            <Col key={field.name} span={field.span || 24}>
+              <Form.Item
+                label={field.label}
+                name={field.name}
+                rules={[
+                  {
+                    required: field.required,
+                    message: `กรุณากรอก${field.label}`,
+                  },
+                ]}
+              >
+                {renderField(field)}
+              </Form.Item>
+            </Col>
+          ))}
+        </Row>
       ))}
       <Form.Item>
         <Button type="primary" htmlType="submit" block>

@@ -16,6 +16,7 @@ interface FieldSchema {
   required?: boolean;
   options?: { label: string; value: string | number | boolean }[];
   placeholder?: string;
+  span?: number;
 }
 
 interface ImportJsonPageProps {
@@ -26,6 +27,8 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [formSchema, setFormSchema] = useState<FieldSchema[]>([]);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const [pendingSchema, setPendingSchema] = useState<FieldSchema[] | null>(null);
   const { control, handleSubmit, reset } = useForm<{ rawJson: string }>();
 
@@ -36,14 +39,84 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
   };
 
   const validateSchema = (schema: unknown): schema is FieldSchema[] => {
-    if (!Array.isArray(schema)) return false;
+    if (!Array.isArray(schema)) {
+      setErrorMessages(['JSON ต้องเป็น Array เท่านั้น']);
+      setErrorModalVisible(true);
+      return false;
+    }
     
-    return schema.every(field => 
-      typeof field === 'object' &&
-      typeof field.type === 'string' &&
-      typeof field.label === 'string' &&
-      typeof field.name === 'string'
-    );
+    const errors: string[] = [];
+    
+    schema.forEach((field, index) => {
+      if (typeof field !== 'object' || field === null) {
+        errors.push(`ฟิลด์ที่ ${index + 1}: ต้องเป็น object`);
+        return;
+      }
+
+      if (typeof field.type !== 'string') {
+        errors.push(`ฟิลด์ที่ ${index + 1}: ต้องมี property 'type' เป็น string`);
+      } else if (!['string', 'number', 'select', 'boolean'].includes(field.type)) {
+        errors.push(`ฟิลด์ที่ ${index + 1}: type '${field.type}' ไม่ถูกต้อง (ต้องเป็น string, number, select, หรือ boolean)`);
+      }
+
+      if (typeof field.label !== 'string') {
+        errors.push(`ฟิลด์ที่ ${index + 1}: ต้องมี property 'label' เป็น string`);
+      }
+
+      if (typeof field.name !== 'string') {
+        errors.push(`ฟิลด์ที่ ${index + 1}: ต้องมี property 'name' เป็น string`);
+      }
+
+      if (field.type === 'select' && (!Array.isArray(field.options) || field.options.length === 0)) {
+        errors.push(`ฟิลด์ที่ ${index + 1}: ต้องมี property 'options' เป็น array ที่มีข้อมูล`);
+      }
+
+      if (field.type === 'select' && field.options) {
+        field.options.forEach((option: { label: string; value: string | number | boolean }, optIndex: number) => {
+          if (typeof option !== 'object' || option === null) {
+            errors.push(`ฟิลด์ที่ ${index + 1}, ตัวเลือกที่ ${optIndex + 1}: ต้องเป็น object`);
+            return;
+          }
+          if (typeof option.label !== 'string') {
+            errors.push(`ฟิลด์ที่ ${index + 1}, ตัวเลือกที่ ${optIndex + 1}: ต้องมี property 'label' เป็น string`);
+          }
+          if (typeof option.value !== 'string' && typeof option.value !== 'number' && typeof option.value !== 'boolean') {
+            errors.push(`ฟิลด์ที่ ${index + 1}, ตัวเลือกที่ ${optIndex + 1}: ต้องมี property 'value' เป็น string, number, หรือ boolean`);
+          }
+        });
+      }
+
+      if (field.span !== undefined && (typeof field.span !== 'number' || field.span < 1 || field.span > 24)) {
+        errors.push(`ฟิลด์ที่ ${index + 1}: span ต้องเป็นตัวเลขระหว่าง 1-24`);
+      }
+    });
+
+    if (errors.length > 0) {
+      setErrorMessages(errors);
+      setErrorModalVisible(true);
+      return false;
+    }
+
+    return true;
+  };
+
+  const processJsonSchema = (jsonData: unknown) => {
+    try {
+      const schema = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+      
+      if (!validateSchema(schema)) {
+        return;
+      }
+
+      showConfirmModal(schema);
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        setErrorMessages([`รูปแบบ JSON ไม่ถูกต้อง: ${error.message}`]);
+      } else {
+        setErrorMessages(['เกิดข้อผิดพลาดในการประมวลผล JSON']);
+      }
+      setErrorModalVisible(true);
+    }
   };
 
   const showConfirmModal = (schema: FieldSchema[]) => {
@@ -66,19 +139,9 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     setPendingSchema(null);
   };
 
-  const processJsonSchema = (jsonData: unknown) => {
-    try {
-      const schema = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-      
-      if (!validateSchema(schema)) {
-        message.error('JSON ไม่ถูกต้องตามรูปแบบที่กำหนด');
-        return;
-      }
-
-      showConfirmModal(schema);
-    } catch {
-      message.error('รูปแบบ JSON ไม่ถูกต้อง');
-    }
+  const handleErrorModalClose = () => {
+    setErrorModalVisible(false);
+    setErrorMessages([]);
   };
 
   const handleRawJsonSubmit = handleSubmit((data) => {
@@ -106,7 +169,15 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     "type": "string",
     "label": "ชื่อ",
     "name": "firstName",
-    "required": true
+    "required": true,
+    "span": 12
+  },
+  {
+    "type": "string",
+    "label": "นามสกุล",
+    "name": "lastName",
+    "required": true,
+    "span": 12
   },
   {
     "type": "select",
@@ -115,7 +186,20 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     "options": [
       { "label": "ชาย", "value": "male" },
       { "label": "หญิง", "value": "female" }
-    ]
+    ],
+    "span": 12
+  },
+  {
+    "type": "number",
+    "label": "อายุ",
+    "name": "age",
+    "span": 12
+  },
+  {
+    "type": "string",
+    "label": "ที่อยู่",
+    "name": "address",
+    "span": 24
   }
 ]`;
 
@@ -134,6 +218,7 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
                 <li>type ที่รองรับ: string, number, select, boolean</li>
                 <li>required เป็น optional boolean</li>
                 <li>options ใช้กับ type select เท่านั้น</li>
+                <li>span เป็น optional number ที่มีค่าระหว่าง 1-24</li>
               </ul>
             </Paragraph>
           </Card>
@@ -319,6 +404,24 @@ export default DynamicForm;`;
           <Paragraph>คุณต้องการสร้างแบบฟอร์มจาก JSON Schema นี้ใช่หรือไม่?</Paragraph>
           <Text>จำนวนฟิลด์ทั้งหมด: {pendingSchema?.length || 0}</Text>
           {renderSchemaFields()}
+        </div>
+      </Modal>
+
+      <Modal
+        title="พบข้อผิดพลาด"
+        open={errorModalVisible}
+        onOk={handleErrorModalClose}
+        onCancel={handleErrorModalClose}
+        okText="เข้าใจแล้ว"
+        cancelText="ปิด"
+      >
+        <div className="space-y-4">
+          <Paragraph>พบข้อผิดพลาดใน JSON Schema:</Paragraph>
+          <ul className="list-disc pl-4 space-y-2">
+            {errorMessages.map((error, index) => (
+              <li key={index} className="text-red-500">{error}</li>
+            ))}
+          </ul>
         </div>
       </Modal>
 
