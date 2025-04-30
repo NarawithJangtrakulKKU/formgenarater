@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Input, Select, Switch, InputNumber, Button, Row, Col, DatePicker } from 'antd';
 import type { Dayjs } from 'dayjs';
 
@@ -10,6 +10,10 @@ interface FieldSchema {
   options?: { label: string; value: string | number | boolean }[];
   placeholder?: string;
   span?: number;
+  dependsOn?: {
+    field: string;
+    options: Record<string | number, { label: string; value: string | number | boolean }[]>;
+  };
 }
 
 interface DynamicFormProps {
@@ -19,6 +23,39 @@ interface DynamicFormProps {
 
 const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
   const [form] = Form.useForm();
+  const [dependentOptions, setDependentOptions] = useState<Record<string, { label: string; value: string | number | boolean }[]>>({});
+
+  useEffect(() => {
+    // Initialize dependent options
+    const initialDependentOptions: Record<string, { label: string; value: string | number | boolean }[]> = {};
+    schema.forEach((field) => {
+      if (field.dependsOn) {
+        initialDependentOptions[field.name] = [];
+      }
+    });
+    setDependentOptions(initialDependentOptions);
+  }, [schema]);
+
+  const handleFieldChange = (changedValues: Record<string, string | number>) => {
+    const [fieldName, value] = Object.entries(changedValues)[0];
+    
+    // Find fields that depend on this field
+    const dependentFields = schema.filter((field) => field.dependsOn?.field === fieldName);
+    
+    dependentFields.forEach((field) => {
+      if (field.dependsOn?.options[value]) {
+        setDependentOptions((prev) => ({
+          ...prev,
+          [field.name]: field.dependsOn!.options[value],
+        }));
+      } else {
+        setDependentOptions((prev) => ({
+          ...prev,
+          [field.name]: [],
+        }));
+      }
+    });
+  };
 
   const renderField = (field: FieldSchema) => {
     switch (field.type) {
@@ -29,14 +66,15 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
       case 'boolean':
         return <Switch />;
       case 'select':
+        const options = field.dependsOn 
+          ? dependentOptions[field.name] || []
+          : field.options || [];
+        
         return (
-          <Select placeholder={field.placeholder || `กรุณาเลือก${field.label}`}>
-            {field.options?.map((option, index) => (
-              <Select.Option key={`${option.value}-${index}`} value={option.value}>
-                {option.label}
-              </Select.Option>
-            ))}
-          </Select>
+          <Select 
+            placeholder={field.placeholder || `กรุณาเลือก${field.label}`}
+            options={options}
+          />
         );
       case 'date':
         return <DatePicker style={{ width: '100%' }} placeholder={field.placeholder || `กรุณาเลือก${field.label}`} />;
@@ -82,6 +120,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
       layout="vertical"
       onFinish={handleSubmit}
       style={{ maxWidth: 800, margin: '0 auto' }}
+      onValuesChange={handleFieldChange}
     >
       {fieldRows.map((row, rowIndex) => (
         <Row key={rowIndex} gutter={16}>
