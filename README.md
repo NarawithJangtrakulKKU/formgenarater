@@ -19,7 +19,7 @@
 
 ## 🛠️ Tech Stack
 
-- [Next.js 14](https://nextjs.org/)
+- [Next.js 15](https://nextjs.org/)
 - [React](https://reactjs.org/)
 - [Ant Design](https://ant.design/)
 - [Tailwind CSS](https://tailwindcss.com/)
