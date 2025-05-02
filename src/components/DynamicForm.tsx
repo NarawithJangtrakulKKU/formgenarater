@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Select, Switch, InputNumber, Button, Row, Col, DatePicker } from 'antd';
+import { Input, Select, Switch, InputNumber, Button, Row, Col, DatePicker } from 'antd';
+import { useForm, Controller } from 'react-hook-form';
 import type { Dayjs } from 'dayjs';
 
 // interface for field schema
@@ -15,9 +16,9 @@ interface FieldSchema {
     field: string;
     options: Record<string | number, { label: string; value: string | number | boolean }[]>;
   };
-  reverseMapping?: { // เพิ่มโครงสร้างสำหรับการแมพย้อนกลับ
-    targets: string[]; // ชื่อฟิลด์ที่จะกำหนดค่าเมื่อฟิลด์นี้เปลี่ยน
-    values: Record<string | number, Record<string, string | number | boolean>>; // ค่าที่จะกำหนดให้ฟิลด์เป้าหมาย
+  reverseMapping?: {
+    targets: string[];
+    values: Record<string | number, Record<string, string | number | boolean>>;
   };
 }
 
@@ -29,7 +30,7 @@ interface DynamicFormProps {
 
 // DynamicForm component
 const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
-  const [form] = Form.useForm();
+  const { control, handleSubmit, setValue } = useForm();
   const [dependentOptions, setDependentOptions] = useState<Record<string, { label: string; value: string | number | boolean }[]>>({});
 
   // useEffect for dependent options
@@ -48,24 +49,20 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
     
     // if there are fields with reverse mapping, set the first field to empty
     if (reverseMappingFields.length > 0) {
-      // get the first field with reverse mapping
       const field = reverseMappingFields[0];
-      form.setFieldValue(field.name, '');
+      setValue(field.name, '');
     }
-  }, [form, schema]);
+  }, [schema, setValue]);
 
   // update dependent options for all fields
   const updateDependentOptionsForAllFields = (values: Record<string, string | number | boolean>) => {
-    // process fields in order (e.g. province -> district -> subdistrict)
     const processedFields = new Set<string>();
-    
-    // process fields in order (e.g. province -> district -> subdistrict)
     let hasChanges = true;
+    
     while (hasChanges) {
       hasChanges = false;
       
       schema.forEach(field => {
-        // skip fields that don't have dependsOn or have already been processed
         if (!field.dependsOn || processedFields.has(field.name)) {
           return;
         }
@@ -73,14 +70,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
         const dependOnField = field.dependsOn.field;
         const dependOnValue = values[dependOnField];
         
-        // if the dependent field has a value and has options
         if (dependOnValue !== undefined && field.dependsOn.options[dependOnValue as string]) {
           setDependentOptions(prev => ({
             ...prev,
             [field.name]: field.dependsOn!.options[dependOnValue as string]
           }));
           
-          // if the dependent field has a value, add it to the processed fields
           if (values[field.name]) {
             processedFields.add(field.name);
             hasChanges = true;
@@ -94,12 +89,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
   const handleReverseMappingChange = (fieldName: string, value: string | number | boolean) => {
     const field = schema.find(f => f.name === fieldName);
     
-    // if the field has reverse mapping, set the value
     if (field?.reverseMapping && field.reverseMapping.targets.length > 0) {
       const targetValues = field.reverseMapping.values[value as string];
       
       if (targetValues) {
-        // create an object with key as the field name and value as the value to set
         const valuesToSet = field.reverseMapping.targets.reduce((acc, target) => {
           if (targetValues[target] !== undefined) {
             acc[target] = targetValues[target];
@@ -107,26 +100,21 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
           return acc;
         }, {} as Record<string, string | number | boolean>);
         
-        // set the values for the target fields
-        form.setFieldsValue(valuesToSet);
+        Object.entries(valuesToSet).forEach(([key, value]) => {
+          setValue(key, value);
+        });
         
-        // update dependentOptions for the fields that have dependencies
         updateDependentOptionsForAllFields(valuesToSet);
       }
     }
   };
 
   // handle field change
-  const handleFieldChange = (changedValues: Record<string, string | number | boolean>) => {
-    const [fieldName, value] = Object.entries(changedValues)[0];
-    
-    // check and handle reverse mapping (e.g. postcode → province/district/subdistrict)
+  const handleFieldChange = (fieldName: string, value: string | number | boolean) => {
     handleReverseMappingChange(fieldName, value);
     
-    // handle normal dependency (e.g. province → district)
     const dependentFields = schema.filter((field) => field.dependsOn?.field === fieldName);
     
-    // update dependent options for the dependent fields
     dependentFields.forEach((field) => {
       if (field.dependsOn?.options[value as string]) {
         setDependentOptions((prev) => ({
@@ -146,15 +134,71 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
   const renderField = (field: FieldSchema) => {
     switch (field.type) {
       case 'string':
-        return <Input placeholder={field.placeholder || `กรุณากรอก${field.label}`} />;
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={{ required: field.required }}
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <div>
+                <Input
+                  placeholder={field.placeholder || `กรุณากรอก${field.label}`}
+                  value={value}
+                  onChange={(e) => {
+                    onChange(e.target.value);
+                    handleFieldChange(field.name, e.target.value);
+                  }}
+                />
+                {error && <span className="text-red-500">{error.message}</span>}
+              </div>
+            )}
+          />
+        );
       case 'number':
-        return <InputNumber style={{ width: '100%' }} placeholder={field.placeholder || `กรุณากรอก${field.label}`} />;
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={{ required: field.required }}
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <div>
+                <InputNumber
+                  style={{ width: '100%' }}
+                  placeholder={field.placeholder || `กรุณากรอก${field.label}`}
+                  value={value}
+                  onChange={(value) => {
+                    onChange(value);
+                    handleFieldChange(field.name, value);
+                  }}
+                />
+                {error && <span className="text-red-500">{error.message}</span>}
+              </div>
+            )}
+          />
+        );
       case 'boolean':
-        return <Switch />;
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={{ required: field.required }}
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <div>
+                <Switch
+                  checked={value}
+                  onChange={(checked) => {
+                    onChange(checked);
+                    handleFieldChange(field.name, checked);
+                  }}
+                />
+                {error && <span className="text-red-500">{error.message}</span>}
+              </div>
+            )}
+          />
+        );
       case 'select':
         let options = field.options || [];
         
-        // if the field has dependsOn, use dependentOptions
         if (field.dependsOn) {
           const dependentOpts = dependentOptions[field.name];
           if (dependentOpts && dependentOpts.length > 0) {
@@ -163,21 +207,70 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
         }
         
         return (
-          <Select 
-            placeholder={field.placeholder || `กรุณาเลือก${field.label}`}
-            options={options}
+          <Controller
+            name={field.name}
+            control={control}
+            rules={{ required: field.required }}
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <div>
+                <Select
+                  placeholder={field.placeholder || `กรุณาเลือก${field.label}`}
+                  value={value}
+                  onChange={(value) => {
+                    onChange(value);
+                    handleFieldChange(field.name, value);
+                  }}
+                  options={options}
+                />
+                {error && <span className="text-red-500">{error.message}</span>}
+              </div>
+            )}
           />
         );
       case 'date':
-        return <DatePicker style={{ width: '100%' }} placeholder={field.placeholder || `กรุณาเลือก${field.label}`} />;
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={{ required: field.required }}
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <div>
+                <DatePicker
+                  style={{ width: '100%' }}
+                  placeholder={field.placeholder || `กรุณาเลือก${field.label}`}
+                  value={value}
+                  onChange={(date) => {
+                    onChange(date);
+                    handleFieldChange(field.name, date);
+                  }}
+                />
+                {error && <span className="text-red-500">{error.message}</span>}
+              </div>
+            )}
+          />
+        );
       default:
-        return <Input placeholder={field.placeholder || `กรุณากรอก${field.label}`} />;
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={{ required: field.required }}
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <div>
+                <Input
+                  placeholder={field.placeholder || `กรุณากรอก${field.label}`}
+                  value={value}
+                  onChange={(e) => {
+                    onChange(e.target.value);
+                    handleFieldChange(field.name, e.target.value);
+                  }}
+                />
+                {error && <span className="text-red-500">{error.message}</span>}
+              </div>
+            )}
+          />
+        );
     }
-  };
-
-  // handle submit
-  const handleSubmit = (values: Record<string, string | number | boolean | Dayjs>) => {
-    onSubmit(values);
   };
 
   // group fields into rows
@@ -206,43 +299,31 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit }) => {
     return rows;
   };
 
-  // group fields into rows
   const fieldRows = groupFieldsIntoRows(schema);
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={handleSubmit}
-      style={{ maxWidth: 800, margin: '0 auto' }}
-      onValuesChange={handleFieldChange}
-    >
+    <form onSubmit={handleSubmit(onSubmit)} className="max-w-3xl mx-auto">
       {fieldRows.map((row, rowIndex) => (
         <Row key={rowIndex} gutter={16}>
           {row.map((field) => (
             <Col key={field.name} span={field.span || 24}>
-              <Form.Item
-                label={field.label}
-                name={field.name}
-                rules={[
-                  {
-                    required: field.required,
-                    message: `กรุณากรอก${field.label}`,
-                  },
-                ]}
-              >
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {field.label}
+                  {field.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
                 {renderField(field)}
-              </Form.Item>
+              </div>
             </Col>
           ))}
         </Row>
       ))}
-      <Form.Item>
+      <div className="mt-6">
         <Button type="primary" htmlType="submit" block>
           บันทึกข้อมูล
         </Button>
-      </Form.Item>
-    </Form>
+      </div>
+    </form>
   );
 };
 
