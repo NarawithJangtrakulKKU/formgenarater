@@ -9,6 +9,7 @@ const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
 const { Dragger } = Upload;
 
+// interface for field schema
 interface FieldSchema {
   type: string;
   label: string;
@@ -17,8 +18,17 @@ interface FieldSchema {
   options?: { label: string; value: string | number | boolean }[];
   placeholder?: string;
   span?: number;
+  dependsOn?: {
+    field: string;
+    options: Record<string | number, { label: string; value: string | number | boolean }[]>;
+  };
+  reverseMapping?: {
+    targets: string[];
+    values: Record<string | number, Record<string, string | number | boolean>>;
+  };
 }
 
+// interface for import json page props
 interface ImportJsonPageProps {
   onImport: (jsonData: Record<string, unknown>) => void;
 }
@@ -32,12 +42,14 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
   const [pendingSchema, setPendingSchema] = useState<FieldSchema[] | null>(null);
   const { control, handleSubmit, reset } = useForm<{ rawJson: string }>();
 
+  // handle open modal
   const handleOpen = () => setIsOpen(true);
   const handleClose = () => {
     setIsOpen(false);
     reset();
   };
 
+  // validate schema
   const validateSchema = (schema: unknown): schema is FieldSchema[] => {
     if (!Array.isArray(schema)) {
       setErrorMessages(['JSON ต้องเป็น Array เท่านั้น']);
@@ -100,6 +112,7 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     return true;
   };
 
+  // process json schema
   const processJsonSchema = (jsonData: unknown) => {
     try {
       const schema = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
@@ -119,11 +132,13 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     }
   };
 
+  // show confirm modal
   const showConfirmModal = (schema: FieldSchema[]) => {
     setPendingSchema(schema);
     setConfirmModalVisible(true);
   };
 
+  // handle confirm ok
   const handleConfirmOk = () => {
     if (pendingSchema) {
       setFormSchema(pendingSchema);
@@ -134,20 +149,24 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     }
   };
 
+  // handle confirm cancel
   const handleConfirmCancel = () => {
     setConfirmModalVisible(false);
     setPendingSchema(null);
   };
 
+  // handle error modal close
   const handleErrorModalClose = () => {
     setErrorModalVisible(false);
     setErrorMessages([]);
   };
 
+  // handle raw json submit
   const handleRawJsonSubmit = handleSubmit((data) => {
     processJsonSchema(data.rawJson);
   });
 
+  // handle file upload
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -158,12 +177,14 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     return false; // Prevent default upload behavior
   };
 
+  // handle form submit
   const handleFormSubmit = (values: Record<string, unknown>) => {
     console.log('Form values:', values);
     message.success('บันทึกข้อมูลสำเร็จ');
     onImport(values);
   };
 
+  // example json
   const exampleJson = `[
   {
     "type": "string",
@@ -203,6 +224,7 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
   }
 ]`;
 
+  // items for tabs
   const items: TabsProps['items'] = [
     {
       key: '1',
@@ -276,6 +298,7 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     },
   ];
 
+  // render schema fields
   const renderSchemaFields = () => {
     if (!pendingSchema) return null;
     
@@ -294,6 +317,7 @@ const ImportJsonPage: React.FC<ImportJsonPageProps> = ({ onImport }) => {
     );
   };
 
+  // generate tsx code
   const generateTSXCode = (schema: FieldSchema[]) => {
     const formFields = schema.map(field => {
       let fieldCode = '';
@@ -357,6 +381,7 @@ ${formFields}
 export default DynamicForm;`;
   };
 
+  // handle copy tsx
   const handleCopyTSX = () => {
     if (formSchema.length === 0) {
       message.warning('กรุณานำเข้า JSON Schema ก่อน');
